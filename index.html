@@ -623,17 +623,27 @@ ${trendContext ? `\n아래는 최근 관련 트렌드 정보예요:\n${trendCont
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    if (data.error) throw new Error('Anthropic 오류: ' + data.error.message);
     const text = data.content.map(i => i.text || '').join('');
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     renderTopics(parsed.topics);
   } catch (e) {
+    loading.classList.remove('show');
+    btn.disabled = false;
     empty.style.display = 'flex';
-    empty.querySelector('p').textContent = '소재를 불러오지 못했어요. API 키를 확인하거나 다시 시도해주세요.';
+    empty.querySelector('p').textContent = (e.message && e.message.length < 120)
+      ? e.message
+      : '소재를 불러오지 못했어요. API 키를 확인하거나 다시 시도해주세요.';
+    return;
   }
 
   loading.classList.remove('show');
@@ -662,8 +672,14 @@ function renderTopics(topics) {
   });
 }
 
-// init
-loadTopics();
+// init — only auto-load if Anthropic key is already saved
+if (ANTHROPIC_KEY) loadTopics();
+else {
+  document.getElementById('topic-loading').classList.remove('show');
+  const empty = document.getElementById('topic-empty');
+  empty.style.display = 'flex';
+  empty.querySelector('p').textContent = '상단 "API 키 설정" 버튼을 눌러 Anthropic API 키를 먼저 입력해주세요.';
+}
 </script>
 </body>
 </html>
