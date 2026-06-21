@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>카드뉴스 생성기</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f9f8f6;--surface:#fff;--surface2:#f3f2ef;
+  --border:rgba(0,0,0,.10);--border-med:rgba(0,0,0,.18);
+  --text:#1a1917;--sub:#5c5a55;--hint:#9c9a95;
+  --accent:#3a3a9c;--accent-l:#eeedfe;--accent-t:#26215c;
+  --green:#085041;--green-l:#e1f5ee;
+  --blue:#0c447c;--blue-l:#e6f1fb;
+  --orange:#633806;--orange-l:#faeeda;
+  --red:#712b13;--red-l:#faece7;
+  --r-md:8px;--r-lg:14px;--r-xl:20px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#17161a;--surface:#22212a;--surface2:#2c2b35;
+  --border:rgba(255,255,255,.10);--border-med:rgba(255,255,255,.18);
+  --text:#f0eee8;--sub:#a8a6a0;--hint:#6a6864;
+  --accent:#7b79e8;--accent-l:#26215c;--accent-t:#cecdf6;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── TOP BAR ── */
+.top-bar{background:var(--surface);border-bottom:.5px solid var(--border);padding:13px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30}
+.logo{width:28px;height:28px;background:var(--accent);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0}
+.top-bar h1{font-size:14px;font-weight:600}
+.key-btn{margin-left:auto;padding:5px 13px;border-radius:var(--r-md);border:.5px solid var(--border-med);background:transparent;color:var(--sub);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all .13s}
+.key-btn:hover{border-color:var(--accent);color:var(--accent)}
+.key-dot{width:6px;height:6px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .2s}
+.key-dot.ok{background:#22c55e}
+
+/* ── KEY MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border-radius:var(--r-lg);padding:24px;width:90%;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal h2{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--sub);margin-bottom:18px;line-height:1.6}
+.modal label{font-size:12px;font-weight:600;color:var(--sub);display:block;margin-bottom:5px}
+.modal input{width:100%;padding:9px 12px;border:.5px solid var(--border-med);border-radius:var(--r-md);font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-bottom:12px}
+.modal input:focus{border-color:var(--accent)}
+.modal-hint{font-size:12px;color:var(--hint);margin-bottom:16px;line-height:1.55}
+.modal-row{display:flex;gap:8px}
+.modal-save{flex:1;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.modal-cancel{padding:10px 16px;border:.5px solid var(--border-med);background:transparent;color:var(--sub);border-radius:var(--r-md);font-size:14px;cursor:pointer;font-family:inherit}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--surface);border-bottom:.5px solid var(--border);padding:0 20px}
+.tab-btn{font-size:13px;font-weight:500;color:var(--hint);background:none;border:none;border-bottom:2px solid transparent;padding:11px 14px;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px}
+.tab-btn:hover{color:var(--sub)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ── TWO-COL ── */
+.layout{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 108px)}
+@media(max-width:720px){.layout{grid-template-columns:1fr}.right-panel{border-left:none;border-top:.5px solid var(--border)}}
+.left-panel{padding:22px 20px;border-right:.5px solid var(--border)}
+.right-panel{padding:22px 20px;background:var(--bg)}
+.panel-label{font-size:11px;font-weight:600;color:var(--hint);letter-spacing:.07em;text-transform:uppercase;margin-bottom:12px}
+
+/* ── INPUT AREA ── */
+.url-row{display:flex;gap:8px;margin-bottom:10px}
+.url-input{flex:1;padding:9px 13px;border:.5px solid var(--border-med);border-radius:var(--r-md);font-size:13px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;transition:border-color .15s}
+.url-input:focus{border-color:var(--accent)}
+.url-input::placeholder{color:var(--hint)}
+.url-fetch-btn{padding:9px 14px;border-radius:var(--r-md);border:.5px solid var(--border-med);background:var(--surface);color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .13s;display:flex;align-items:center;gap:5px}
+.url-fetch-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.url-fetch-btn:disabled{opacity:.45;cursor:not-allowed}
+.divider-or{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.divider-or span{font-size:11px;color:var(--hint);white-space:nowrap}
+.divider-or::before,.divider-or::after{content:'';flex:1;height:.5px;background:var(--border)}
+.input-box{background:var(--surface);border:.5px solid var(--border-med);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:14px;transition:border-color .15s}
+.input-box:focus-within{border-color:var(--accent)}
+.input-box textarea{width:100%;height:150px;resize:vertical;font-size:13px;line-height:1.75;font-family:inherit;color:var(--text);background:transparent;border:none;outline:none}
+.input-box textarea::placeholder{color:var(--hint)}
+.char-info{font-size:11px;color:var(--hint);text-align:right;margin-top:4px}
+
+/* ── OPTIONS ── */
+.option-group{margin-bottom:14px}
+.option-group label{font-size:12px;font-weight:600;color:var(--sub);display:block;margin-bottom:6px}
+.pills{display:flex;flex-wrap:wrap;gap:5px}
+.pill{font-size:12px;padding:4px 12px;border-radius:20px;border:.5px solid var(--border-med);background:var(--surface);color:var(--sub);cursor:pointer;transition:all .13s;font-family:inherit}
+.pill:hover{border-color:var(--accent);color:var(--accent)}
+.pill.on{background:var(--accent-l);border-color:var(--accent);color:var(--accent);font-weight:600}
+
+/* ── BUTTONS ── */
+.gen-btn{width:100%;padding:12px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-lg);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:7px}
+.gen-btn:hover{opacity:.88}
+.gen-btn:active{transform:scale(.98)}
+.gen-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.action-btn{flex:1;padding:8px 14px;border-radius:var(--r-md);border:.5px solid var(--border-med);background:var(--surface);color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .13s;display:flex;align-items:center;justify-content:center;gap:5px}
+.action-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-l)}
+
+/* ── STATES ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px;gap:10px;color:var(--hint)}
+.empty-icon{width:48px;height:48px;border:.5px dashed var(--border-med);border-radius:var(--r-xl);display:flex;align-items:center;justify-content:center;font-size:20px}
+.empty-state p{font-size:13px}
+.loading-state{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:240px;gap:12px;color:var(--sub)}
+.loading-state.show{display:flex}
+.spinner{width:24px;height:24px;border:2.5px solid var(--border-med);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-state p{font-size:13px}
+.results-state{display:none}
+.results-state.show{display:block}
+
+/* ── RESULT CARDS ── */
+.result-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;line-height:1.4}
+.main-title-box{background:var(--accent-l);border:.5px solid var(--accent);border-radius:var(--r-lg);padding:13px 15px;margin-bottom:12px;display:none}
+.main-title-box .mtlabel{font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}
+.mt1,.mt2{font-size:18px;font-weight:700;color:var(--text);line-height:1.35}
+.card-item{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:8px;transition:border-color .13s}
+.card-item:hover{border-color:var(--border-med)}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.card-num{font-size:11px;color:var(--hint);font-weight:500}
+.card-badge{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:600}
+.b-hook{background:var(--accent-l);color:var(--accent-t)}
+.b-info{background:var(--green-l);color:var(--green)}
+.b-data{background:var(--blue-l);color:var(--blue)}
+.b-story{background:var(--orange-l);color:var(--orange)}
+.b-cta{background:var(--red-l);color:var(--red)}
+.b-quote{background:var(--orange-l);color:var(--orange)}
+.b-tip{background:var(--green-l);color:var(--green)}
+.card-title-t{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.4}
+.card-desc-t{font-size:12px;color:var(--sub);line-height:1.65}
+.card-dtip{font-size:11px;color:var(--hint);margin-top:7px;padding-top:7px;border-top:.5px solid var(--border);display:flex;align-items:flex-start;gap:4px}
+.actions-row{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}
+.error-box{display:none;background:#fff5f5;border:.5px solid #f5c1c1;border-radius:var(--r-md);padding:10px 13px;font-size:13px;color:#a32d2d;margin-top:10px}
+.error-box.show{display:block}
+.fetch-status{font-size:12px;color:var(--sub);padding:7px 0;display:none}
+.fetch-status.show{display:block}
+
+/* ── TOPIC TAB ── */
+.topic-layout{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 108px)}
+@media(max-width:720px){.topic-layout{grid-template-columns:1fr}.cat-panel{border-right:none;border-bottom:.5px solid var(--border)}}
+.cat-panel{padding:18px 14px;border-right:.5px solid var(--border);background:var(--surface)}
+.topic-right{padding:22px 20px}
+.cat-btn{width:100%;display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--r-md);border:none;background:none;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;text-align:left;transition:all .13s;margin-bottom:2px}
+.cat-btn:hover{background:var(--bg);color:var(--text)}
+.cat-btn.active{background:var(--accent-l);color:var(--accent);font-weight:600}
+.cat-icon{font-size:16px;flex-shrink:0}
+.topic-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.topic-top h3{font-size:15px;font-weight:700}
+.refresh-btn{padding:5px 12px;border-radius:var(--r-md);border:.5px solid var(--border-med);background:var(--surface);color:var(--sub);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .13s;display:flex;align-items:center;gap:4px}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+.refresh-btn:disabled{opacity:.45;cursor:not-allowed}
+.topic-loading{display:none;padding:2.5rem;text-align:center;color:var(--hint);font-size:13px}
+.topic-loading.show{display:block}
+.topic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px}
+.topic-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:13px 14px;cursor:pointer;transition:all .15s}
+.topic-card:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(58,58,156,.08)}
+.tc-label{font-size:11px;font-weight:600;color:var(--hint);margin-bottom:5px}
+.tc-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.4}
+.tc-desc{font-size:12px;color:var(--sub);line-height:1.55}
+.tc-use{margin-top:9px;padding-top:9px;border-top:.5px solid var(--border);font-size:12px;color:var(--accent);font-weight:600}
+.topic-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px;color:var(--hint);gap:8px;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="logo">📰</div>
+  <h1>카드뉴스 생성기</h1>
+  <button class="key-btn" onclick="openModal()">
+    <span class="key-dot" id="key-dot"></span>
+    <span id="key-label">API 키 설정</span>
+  </button>
+</div>
+
+<!-- KEY MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2>🔑 API 키 설정</h2>
+    <p>키는 이 기기 브라우저에만 저장되며 외부로 전송되지 않아요.</p>
+
+    <label>Anthropic API 키 <span style="color:var(--red);font-size:11px">필수</span></label>
+    <input type="password" id="k-anthropic" placeholder="sk-ant-..." autocomplete="off">
+
+    <label>Exa API 키 <span style="color:var(--hint);font-size:11px">링크 추출 · 트렌드 검색용 (선택)</span></label>
+    <input type="password" id="k-exa" placeholder="exa-..." autocomplete="off">
+
+    <p class="modal-hint">
+      · Anthropic 키: <a href="https://console.anthropic.com/keys" target="_blank" style="color:var(--accent)">console.anthropic.com/keys</a><br>
+      · Exa 키: <a href="https://dashboard.exa.ai" target="_blank" style="color:var(--accent)">dashboard.exa.ai</a> (월 1,000건 무료)
+    </p>
+    <div class="modal-row">
+      <button class="modal-save" onclick="saveKeys()">저장</button>
+      <button class="modal-cancel" onclick="closeModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('topic',this)">💡 소재 추천</button>
+  <button class="tab-btn" onclick="switchTab('gen',this)">✦ 콘텐츠 생성</button>
+</div>
+
+<!-- ── TAB: 소재 추천 ── -->
+<div class="tab-panel active" id="tab-topic">
+  <div class="topic-layout">
+    <div class="cat-panel">
+      <p class="panel-label" style="margin-bottom:10px">카테고리</p>
+      <button class="cat-btn active" data-cat="여행" onclick="selectCat(this)"><span class="cat-icon">✈️</span>여행</button>
+      <button class="cat-btn" data-cat="뷰티" onclick="selectCat(this)"><span class="cat-icon">💄</span>뷰티</button>
+      <button class="cat-btn" data-cat="패션·유행" onclick="selectCat(this)"><span class="cat-icon">👗</span>패션·유행</button>
+      <button class="cat-btn" data-cat="생활·인테리어" onclick="selectCat(this)"><span class="cat-icon">🏠</span>생활·인테리어</button>
+      <button class="cat-btn" data-cat="음식·맛집" onclick="selectCat(this)"><span class="cat-icon">🍽️</span>음식·맛집</button>
+      <button class="cat-btn" data-cat="건강·운동" onclick="selectCat(this)"><span class="cat-icon">💪</span>건강·운동</button>
+      <button class="cat-btn" data-cat="재테크·경제" onclick="selectCat(this)"><span class="cat-icon">💰</span>재테크·경제</button>
+      <button class="cat-btn" data-cat="육아·교육" onclick="selectCat(this)"><span class="cat-icon">👶</span>육아·교육</button>
+      <button class="cat-btn" data-cat="IT·테크" onclick="selectCat(this)"><span class="cat-icon">📱</span>IT·테크</button>
+      <button class="cat-btn" data-cat="취미·문화" onclick="selectCat(this)"><span class="cat-icon">🎨</span>취미·문화</button>
+    </div>
+    <div class="topic-right">
+      <div class="topic-top">
+        <h3 id="cat-title">여행 소재 추천</h3>
+        <button class="refresh-btn" id="refresh-btn" onclick="loadTopics()">↺ 새로 추천</button>
+      </div>
+      <div class="topic-loading" id="topic-loading">
+        <div class="spinner" style="margin:0 auto 10px"></div>
+        검색량 트렌드 분석 중...
+      </div>
+      <div class="topic-empty" id="topic-empty" style="display:none">
+        <span style="font-size:26px">🔍</span>
+        <p>소재를 불러올 수 없어요. Exa API 키를 확인하거나 다시 시도해주세요.</p>
+      </div>
+      <div class="topic-grid" id="topic-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB: 콘텐츠 생성 ── -->
+<div class="tab-panel" id="tab-gen">
+  <div class="layout">
+    <div class="left-panel">
+      <p class="panel-label">내용 입력</p>
+
+      <!-- URL row -->
+      <div class="url-row">
+        <input class="url-input" id="url-input" type="url" placeholder="🔗 기사 URL을 붙여넣으면 자동으로 내용을 가져와요">
+        <button class="url-fetch-btn" id="url-fetch-btn" onclick="fetchUrl()">
+          <span id="fetch-icon">⬇</span> 불러오기
+        </button>
+      </div>
+      <div class="fetch-status" id="fetch-status"></div>
+
+      <div class="divider-or"><span>또는 직접 입력</span></div>
+
+      <div class="input-box">
+        <textarea id="content" placeholder="기사, 보고서, 블로그 글 등 어떤 내용이든 붙여넣으세요.
+
+소재 추천 탭에서 소재를 고르면 자동으로 여기에 채워져요."></textarea>
+        <div class="char-info"><span id="char-cnt">0</span>자</div>
+      </div>
+
+      <div class="option-group">
+        <label>카드 수</label>
+        <div class="pills">
+          <button class="pill on" data-g="count" data-v="5">5장</button>
+          <button class="pill" data-g="count" data-v="7">7장</button>
+          <button class="pill" data-g="count" data-v="10">10장</button>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <label>톤 &amp; 스타일 <span style="font-size:11px;color:var(--hint);font-weight:400">복수 선택 가능</span></label>
+        <div class="pills">
+          <button class="pill on" data-g="tone" data-v="정보전달">정보전달</button>
+          <button class="pill" data-g="tone" data-v="흥미유발">흥미유발</button>
+          <button class="pill" data-g="tone" data-v="공감형">공감형</button>
+          <button class="pill" data-g="tone" data-v="전문적">전문적</button>
+          <button class="pill" data-g="tone" data-v="유머러스">유머러스</button>
+          <button class="pill" data-g="tone" data-v="감성적">감성적</button>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <label>대상 독자 <span style="font-size:11px;color:var(--hint);font-weight:400">복수 선택 가능</span></label>
+        <div class="pills">
+          <button class="pill on" data-g="audience" data-v="일반 대중">일반 대중</button>
+          <button class="pill" data-g="audience" data-v="MZ세대">MZ세대</button>
+          <button class="pill" data-g="audience" data-v="직장인">직장인</button>
+          <button class="pill" data-g="audience" data-v="전문가">전문가</button>
+          <button class="pill" data-g="audience" data-v="주부">주부</button>
+          <button class="pill" data-g="audience" data-v="시니어">시니어</button>
+        </div>
+      </div>
+
+      <button class="gen-btn" id="gen-btn" onclick="generate()">✦ 카드뉴스 구성안 생성</button>
+      <div class="error-box" id="error-box"></div>
+    </div>
+
+    <div class="right-panel">
+      <p class="panel-label">추천 구성안</p>
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">🗂</div>
+        <p>내용을 입력하고 생성 버튼을 눌러주세요</p>
+      </div>
+      <div class="loading-state" id="loading-state">
+        <div class="spinner"></div>
+        <p>AI가 카드 구성안을 분석 중이에요...</p>
+      </div>
+      <div class="results-state" id="results-state">
+        <p class="result-title" id="result-title"></p>
+        <div class="main-title-box" id="main-title-box">
+          <p class="mtlabel">✦ 추천 메인 제목</p>
+          <p class="mt1" id="mt1"></p>
+          <p class="mt2" id="mt2"></p>
+        </div>
+        <div id="cards-list"></div>
+        <div class="actions-row">
+          <button class="action-btn" onclick="generate()">↺ 다시 생성</button>
+          <button class="action-btn" id="copy-btn" onclick="copyAll()">⎘ 전체 복사</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── KEYS ──
+let ANTHROPIC_KEY = localStorage.getItem('cn_anthropic') || '';
+let EXA_KEY = localStorage.getItem('cn_exa') || '';
+
+function updateKeyStatus() {
+  const dot = document.getElementById('key-dot');
+  const lbl = document.getElementById('key-label');
+  if (ANTHROPIC_KEY) { dot.classList.add('ok'); lbl.textContent = 'API 키 설정됨'; }
+  else { dot.classList.remove('ok'); lbl.textContent = 'API 키 설정'; }
+}
+function openModal() {
+  document.getElementById('k-anthropic').value = ANTHROPIC_KEY;
+  document.getElementById('k-exa').value = EXA_KEY;
+  document.getElementById('modal-bg').classList.add('show');
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('show'); }
+function saveKeys() {
+  ANTHROPIC_KEY = document.getElementById('k-anthropic').value.trim();
+  EXA_KEY = document.getElementById('k-exa').value.trim();
+  if (ANTHROPIC_KEY) localStorage.setItem('cn_anthropic', ANTHROPIC_KEY);
+  else localStorage.removeItem('cn_anthropic');
+  if (EXA_KEY) localStorage.setItem('cn_exa', EXA_KEY);
+  else localStorage.removeItem('cn_exa');
+  updateKeyStatus();
+  closeModal();
+  if (EXA_KEY) loadTopics();
+}
+updateKeyStatus();
+
+// ── TABS ──
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── GEN TAB: char count ──
+const textarea = document.getElementById('content');
+textarea.addEventListener('input', () => {
+  document.getElementById('char-cnt').textContent = textarea.value.length.toLocaleString();
+});
+
+// ── PILLS: multi-select for tone/audience, single for count ──
+document.querySelectorAll('.pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const g = btn.dataset.g;
+    if (g === 'count') {
+      document.querySelectorAll(`[data-g="count"]`).forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+    } else {
+      btn.classList.toggle('on');
+      // ensure at least one selected
+      const selected = document.querySelectorAll(`[data-g="${g}"].on`);
+      if (selected.length === 0) btn.classList.add('on');
+    }
+  });
+});
+
+function getOpts(g) {
+  return [...document.querySelectorAll(`[data-g="${g}"].on`)].map(b => b.dataset.v);
+}
+function getOpt(g) {
+  const el = document.querySelector(`[data-g="${g}"].on`);
+  return el ? el.dataset.v : '';
+}
+
+// ── URL FETCH ──
+async function fetchUrl() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) return;
+  if (!EXA_KEY) { showFetchStatus('Exa API 키가 필요해요. 상단 "API 키 설정"을 눌러 입력해주세요.', true); return; }
+
+  const btn = document.getElementById('url-fetch-btn');
+  const icon = document.getElementById('fetch-icon');
+  btn.disabled = true;
+  icon.textContent = '⏳';
+  showFetchStatus('링크에서 내용을 가져오는 중...', false);
+
+  try {
+    const res = await fetch('https://api.exa.ai/contents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': EXA_KEY },
+      body: JSON.stringify({ ids: [url], text: true })
+    });
+    const data = await res.json();
+    const result = data.results?.[0];
+    if (!result?.text) throw new Error('내용 없음');
+
+    const content = (result.title ? `제목: ${result.title}\n\n` : '') + result.text.slice(0, 3000);
+    textarea.value = content;
+    document.getElementById('char-cnt').textContent = content.length.toLocaleString();
+    showFetchStatus('✓ 내용을 가져왔어요!', false);
+  } catch (e) {
+    showFetchStatus('내용을 가져오지 못했어요. URL을 확인하거나 직접 내용을 입력해주세요.', true);
+  }
+
+  btn.disabled = false;
+  icon.textContent = '⬇';
+}
+
+function showFetchStatus(msg, isErr) {
+  const el = document.getElementById('fetch-status');
+  el.textContent = msg;
+  el.style.color = isErr ? '#a32d2d' : 'var(--sub)';
+  el.classList.add('show');
+  if (!isErr) setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── GENERATE ──
+const badgeMap = {
+  hook:{cls:'b-hook',label:'훅 카드'},info:{cls:'b-info',label:'정보 카드'},
+  data:{cls:'b-data',label:'데이터 카드'},story:{cls:'b-story',label:'스토리 카드'},
+  quote:{cls:'b-quote',label:'인용 카드'},tip:{cls:'b-tip',label:'팁 카드'},
+  cta:{cls:'b-cta',label:'CTA 카드'},
+};
+
+async function generate() {
+  if (!ANTHROPIC_KEY) { openModal(); return; }
+  const content = textarea.value.trim();
+  if (!content) { textarea.focus(); return; }
+
+  const count = getOpt('count');
+  const tones = getOpts('tone').join(', ');
+  const audiences = getOpts('audience').join(', ');
+
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('results-state').classList.remove('show');
+  document.getElementById('loading-state').classList.add('show');
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('error-box').classList.remove('show');
+
+  const prompt = `당신은 카드뉴스 콘텐츠 기획 전문가입니다.
+
+아래 내용을 바탕으로 ${count}장짜리 카드뉴스 구성안을 만들어주세요.
+
+[조건]
+- 톤/스타일: ${tones}
+- 대상 독자: ${audiences}
+- 카드 수: ${count}장
+
+[입력 내용]
+${content}
+
+반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요:
+
+{
+  "title": "카드뉴스 내부용 전체 제목 (한 줄 요약)",
+  "main_title_line1": "카드뉴스 표지 메인 제목 1줄 (20자 이내, 핵심 키워드 중심, 임팩트 있게)",
+  "main_title_line2": "메인 제목 2줄째 (20자 이내, 없어도 되면 빈 문자열)",
+  "cards": [
+    {
+      "num": 1,
+      "type": "hook",
+      "title": "카드 제목 (20자 이내)",
+      "desc": "카드 본문 (50~80자, 핵심만 임팩트있게)",
+      "tip": "디자인 팁 (어울리는 비주얼 한 줄)"
+    }
+  ]
+}
+
+type: hook, info, data, story, quote, tip, cta 중 선택. 첫 카드=hook, 마지막=cta.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1200, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content.map(i => i.text || '').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    renderCards(parsed);
+  } catch (e) {
+    const eb = document.getElementById('error-box');
+    eb.textContent = 'API 오류: ' + (e.message || '다시 시도해주세요');
+    eb.classList.add('show');
+    document.getElementById('empty-state').style.display = 'flex';
+  }
+  document.getElementById('loading-state').classList.remove('show');
+  document.getElementById('gen-btn').disabled = false;
+}
+
+function renderCards(data) {
+  document.getElementById('result-title').textContent = '📰 ' + (data.title || '');
+  const box = document.getElementById('main-title-box');
+  document.getElementById('mt1').textContent = data.main_title_line1 || '';
+  const mt2el = document.getElementById('mt2');
+  mt2el.textContent = data.main_title_line2 || '';
+  mt2el.style.display = data.main_title_line2 ? 'block' : 'none';
+  box.style.display = data.main_title_line1 ? 'block' : 'none';
+
+  const list = document.getElementById('cards-list');
+  list.innerHTML = '';
+  data.cards.forEach(card => {
+    const b = badgeMap[card.type] || { cls: 'b-info', label: card.type };
+    const div = document.createElement('div');
+    div.className = 'card-item';
+    div.innerHTML = `
+      <div class="card-top">
+        <span class="card-num">카드 ${card.num}</span>
+        <span class="card-badge ${b.cls}">${b.label}</span>
+      </div>
+      <p class="card-title-t">${card.title}</p>
+      <p class="card-desc-t">${card.desc}</p>
+      ${card.tip ? `<p class="card-dtip">🎨 ${card.tip}</p>` : ''}
+    `;
+    list.appendChild(div);
+  });
+  document.getElementById('results-state').classList.add('show');
+}
+
+function copyAll() {
+  const l1 = document.getElementById('mt1').textContent;
+  const l2 = document.getElementById('mt2').textContent;
+  let text = document.getElementById('result-title').textContent + '\n\n';
+  if (l1) text += `[메인 제목]\n${l1}${l2 ? '\n' + l2 : ''}\n\n`;
+  document.querySelectorAll('.card-item').forEach(item => {
+    text += `[${item.querySelector('.card-num').textContent}] ${item.querySelector('.card-title-t').textContent}\n${item.querySelector('.card-desc-t').textContent}\n\n`;
+  });
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ 복사됨!';
+    setTimeout(() => { btn.textContent = '⎘ 전체 복사'; }, 2000);
+  });
+}
+
+// ── TOPIC TAB ──
+let currentCat = '여행';
+
+function selectCat(btn) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentCat = btn.dataset.cat;
+  document.getElementById('cat-title').textContent = currentCat + ' 소재 추천';
+  loadTopics();
+}
+
+async function loadTopics() {
+  const grid = document.getElementById('topic-grid');
+  const loading = document.getElementById('topic-loading');
+  const empty = document.getElementById('topic-empty');
+  const btn = document.getElementById('refresh-btn');
+
+  grid.innerHTML = '';
+  empty.style.display = 'none';
+  loading.classList.add('show');
+  btn.disabled = true;
+
+  // Exa로 실시간 트렌드 검색 후 Claude로 소재 정리
+  let trendContext = '';
+  if (EXA_KEY) {
+    try {
+      const exaRes = await fetch('https://api.exa.ai/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': EXA_KEY },
+        body: JSON.stringify({
+          query: `${currentCat} 트렌드 인기 2025 2026`,
+          numResults: 5,
+          useAutoprompt: true,
+          type: 'neural',
+          text: { maxCharacters: 400 }
+        })
+      });
+      const exaData = await exaRes.json();
+      trendContext = (exaData.results || []).map(r => `- ${r.title}: ${r.text || ''}`).join('\n').slice(0, 1500);
+    } catch (e) {}
+  }
+
+  if (!ANTHROPIC_KEY) {
+    loading.classList.remove('show');
+    btn.disabled = false;
+    empty.style.display = 'flex';
+    empty.querySelector('p').textContent = 'Anthropic API 키를 먼저 설정해주세요.';
+    return;
+  }
+
+  const prompt = `당신은 SNS 카드뉴스 콘텐츠 기획 전문가입니다.
+"${currentCat}" 카테고리에서 지금 사람들이 많이 검색하고 관심 가질 만한 카드뉴스 소재 6가지를 추천해주세요.
+${trendContext ? `\n아래는 최근 관련 트렌드 정보예요:\n${trendContext}\n` : ''}
+각 소재는 구체적이고 실용적이어야 하며, 클릭하고 싶은 제목이어야 합니다.
+
+반드시 아래 JSON 형식으로만 응답하세요:
+
+{
+  "topics": [
+    {
+      "label": "키워드 (8자 이내)",
+      "title": "카드뉴스 소재 제목 (25자 이내, 클릭 유도)",
+      "desc": "이 소재가 인기인 이유 또는 핵심 내용 (40~55자)",
+      "angle": "콘텐츠 각도 (비교/순위/꿀팁/실패사례/챌린지 등 10자 이내)"
+    }
+  ]
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content.map(i => i.text || '').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    renderTopics(parsed.topics);
+  } catch (e) {
+    empty.style.display = 'flex';
+    empty.querySelector('p').textContent = '소재를 불러오지 못했어요. API 키를 확인하거나 다시 시도해주세요.';
+  }
+
+  loading.classList.remove('show');
+  btn.disabled = false;
+}
+
+function renderTopics(topics) {
+  const grid = document.getElementById('topic-grid');
+  grid.innerHTML = '';
+  topics.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'topic-card';
+    div.innerHTML = `
+      <p class="tc-label">${t.label} · ${t.angle}</p>
+      <p class="tc-title">${t.title}</p>
+      <p class="tc-desc">${t.desc}</p>
+      <p class="tc-use">이 소재로 만들기 →</p>
+    `;
+    div.addEventListener('click', () => {
+      const text = `[카테고리] ${currentCat}\n[소재] ${t.title}\n[핵심 내용] ${t.desc}\n[콘텐츠 각도] ${t.angle}`;
+      textarea.value = text;
+      document.getElementById('char-cnt').textContent = text.length.toLocaleString();
+      switchTab('gen', document.querySelectorAll('.tab-btn')[1]);
+    });
+    grid.appendChild(div);
+  });
+}
+
+// init
+loadTopics();
+</script>
+</body>
+</html>
