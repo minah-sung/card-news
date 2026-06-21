@@ -489,7 +489,7 @@ type: hook, info, data, story, quote, tip, cta 중 선택. 첫 카드=hook, 마�
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${ANTHROPIC_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ANTHROPIC_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -625,7 +625,7 @@ ${trendContext ? `\n아래는 최근 관련 트렌드 정보예요:\n${trendCont
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${ANTHROPIC_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ANTHROPIC_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
