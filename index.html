@@ -175,17 +175,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Noto Sans KR',sa
 <!-- KEY MODAL -->
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <h2>🔑 API 키 설정</h2>
+    <h2>🔑 Gemini API 키 설정</h2>
     <p>키는 이 기기 브라우저에만 저장되며 외부로 전송되지 않아요.</p>
 
-    <label>Anthropic API 키 <span style="color:var(--red);font-size:11px">필수</span></label>
-    <input type="password" id="k-anthropic" placeholder="sk-ant-..." autocomplete="off">
+    <label>Gemini API 키 <span style="color:var(--red);font-size:11px">필수</span></label>
+    <input type="password" id="k-anthropic" placeholder="AIza..." autocomplete="off">
 
     <label>Exa API 키 <span style="color:var(--hint);font-size:11px">링크 추출 · 트렌드 검색용 (선택)</span></label>
     <input type="password" id="k-exa" placeholder="exa-..." autocomplete="off">
 
     <p class="modal-hint">
-      · Anthropic 키: <a href="https://console.anthropic.com/keys" target="_blank" style="color:var(--accent)">console.anthropic.com/keys</a><br>
+      · Gemini 키: <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com/app/apikey</a> (무료)<br>
       · Exa 키: <a href="https://dashboard.exa.ai" target="_blank" style="color:var(--accent)">dashboard.exa.ai</a> (월 1,000건 무료)
     </p>
     <div class="modal-row">
@@ -325,14 +325,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Noto Sans KR',sa
 
 <script>
 // ── KEYS ──
-let ANTHROPIC_KEY = localStorage.getItem('cn_anthropic') || '';
+let ANTHROPIC_KEY = localStorage.getItem('cn_gemini') || '';
 let EXA_KEY = localStorage.getItem('cn_exa') || '';
 
 function updateKeyStatus() {
   const dot = document.getElementById('key-dot');
   const lbl = document.getElementById('key-label');
-  if (ANTHROPIC_KEY) { dot.classList.add('ok'); lbl.textContent = 'API 키 설정됨'; }
-  else { dot.classList.remove('ok'); lbl.textContent = 'API 키 설정'; }
+  if (ANTHROPIC_KEY) { dot.classList.add('ok'); lbl.textContent = 'Gemini 키 설정됨'; }
+  else { dot.classList.remove('ok'); lbl.textContent = 'Gemini 키 설정'; }
 }
 function openModal() {
   document.getElementById('k-anthropic').value = ANTHROPIC_KEY;
@@ -343,8 +343,8 @@ function closeModal() { document.getElementById('modal-bg').classList.remove('sh
 function saveKeys() {
   ANTHROPIC_KEY = document.getElementById('k-anthropic').value.trim();
   EXA_KEY = document.getElementById('k-exa').value.trim();
-  if (ANTHROPIC_KEY) localStorage.setItem('cn_anthropic', ANTHROPIC_KEY);
-  else localStorage.removeItem('cn_anthropic');
+  if (ANTHROPIC_KEY) localStorage.setItem('cn_gemini', ANTHROPIC_KEY);
+  else localStorage.removeItem('cn_gemini');
   if (EXA_KEY) localStorage.setItem('cn_exa', EXA_KEY);
   else localStorage.removeItem('cn_exa');
   updateKeyStatus();
@@ -488,14 +488,17 @@ ${content}
 type: hook, info, data, story, quote, tip, cta 중 선택. 첫 카드=hook, 마지막=cta.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1200, messages: [{ role: 'user', content: prompt }] })
-    });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${ANTHROPIC_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    const text = data.content.map(i => i.text || '').join('');
+    if (data.error) throw new Error('Gemini 오류: ' + data.error.message);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     renderCards(parsed);
   } catch (e) {
@@ -621,19 +624,17 @@ ${trendContext ? `\n아래는 최근 관련 트렌드 정보예요:\n${trendCont
 }`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
-    });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${ANTHROPIC_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
     const data = await res.json();
-    if (data.error) throw new Error('Anthropic 오류: ' + data.error.message);
-    const text = data.content.map(i => i.text || '').join('');
+    if (data.error) throw new Error('Gemini 오류: ' + data.error.message);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
     renderTopics(parsed.topics);
   } catch (e) {
@@ -678,7 +679,7 @@ else {
   document.getElementById('topic-loading').classList.remove('show');
   const empty = document.getElementById('topic-empty');
   empty.style.display = 'flex';
-  empty.querySelector('p').textContent = '상단 "API 키 설정" 버튼을 눌러 Anthropic API 키를 먼저 입력해주세요.';
+  empty.querySelector('p').textContent = '상단 "API 키 설정" 버튼을 눌러 Gemini API 키를 먼저 입력해주세요.';
 }
 </script>
 </body>
